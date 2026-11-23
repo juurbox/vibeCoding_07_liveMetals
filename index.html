@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="ko" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MetalPulse - 실시간 금속 시세 및 변동 트렌드 대시보드</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  
+  <!-- FontAwesome 6 -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+KR:wght@300;400;500;700;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="style.css">
+  
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Pretendard', 'Noto Sans KR', 'Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            brand: {
+              gold: '#F59E0B',
+              goldLight: '#FDE68A',
+              silver: '#94A3B8',
+              platinum: '#06B6D4',
+              palladium: '#8B5CF6',
+              darkBg: '#090D16',
+              cardBg: '#111827',
+              cardBorder: '#1F2937'
+            }
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="bg-brand-darkBg text-slate-100 min-h-screen flex flex-col font-sans antialiased selection:bg-amber-500 selection:text-black">
+
+  <!-- Header -->
+  <header class="sticky top-0 z-40 backdrop-blur-xl bg-brand-darkBg/90 border-b border-slate-800/80 px-4 sm:px-8 py-3.5 transition-all shadow-lg shadow-black/20">
+    <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-3">
+      
+      <!-- Logo & Title -->
+      <div class="flex items-center gap-3 w-full md:w-auto justify-between md:justify-start">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 via-amber-500 to-amber-700 flex items-center justify-center shadow-lg shadow-amber-500/20 text-slate-950 font-extrabold text-xl">
+            <i class="fa-solid fa-gem"></i>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <h1 class="text-xl font-extrabold tracking-tight bg-gradient-to-r from-amber-200 via-slate-100 to-amber-400 bg-clip-text text-transparent">MetalPulse</h1>
+              <span class="px-2 py-0.5 text-[10px] font-bold uppercase rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">실시간 원화(KRW) 연동</span>
+            </div>
+            <p class="text-xs text-slate-400">MetalpriceAPI 실시간 환율 및 귀금속 시세 분석 대시보드</p>
+          </div>
+        </div>
+
+        <!-- Mobile controls -->
+        <div class="flex md:hidden items-center gap-2">
+          <button id="mobileRefreshBtn" class="p-2 rounded-lg bg-slate-800 text-slate-300 hover:text-white" title="새로고침">
+            <i class="fa-solid fa-arrows-rotate"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Live Exchange Rate & Global Controls -->
+      <div class="flex flex-wrap items-center justify-end gap-2.5 w-full md:w-auto text-xs">
+        
+        <!-- Live Real-time Exchange Rate Pill -->
+        <div class="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-slate-800/90 border border-slate-700/80 shadow-inner">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span class="text-slate-400 font-medium">실시간 환율:</span>
+          <span id="headerExchangeRate" class="font-mono font-bold text-amber-300 text-sm">1 USD = ₩1,344.99</span>
+        </div>
+
+        <!-- Unit Switcher (oz / g) -->
+        <div class="flex items-center rounded-xl bg-slate-800/90 border border-slate-700/80 p-0.5 text-xs font-medium">
+          <button id="unitOzBtn" class="px-3 py-1.5 rounded-lg transition-all bg-amber-500 text-slate-950 font-bold shadow-sm">
+            온스 (oz)
+          </button>
+          <button id="unitGBtn" class="px-3 py-1.5 rounded-lg transition-all text-slate-400 hover:text-white font-medium">
+            그램 (g)
+          </button>
+        </div>
+
+        <!-- Refresh Button -->
+        <button id="refreshBtn" class="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 transition-all active:scale-95 shadow-sm font-medium">
+          <i id="refreshIcon" class="fa-solid fa-arrows-rotate text-xs"></i>
+          <span>새로고침</span>
+        </button>
+
+      </div>
+
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-8 py-6 space-y-8">
+
+    <!-- Status Bar -->
+    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3.5 rounded-xl bg-slate-900/90 border border-slate-800 text-xs shadow-md">
+      <div class="flex items-center gap-2.5">
+        <span class="relative flex h-2.5 w-2.5">
+          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+          <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+        </span>
+        <span class="font-medium text-slate-200">MetalpriceAPI 실시간 OpenAPI 정상 연동 중</span>
+        <span class="px-2 py-0.5 rounded text-[10px] bg-slate-800 text-amber-300 border border-slate-700">KRW 기준 통화 실시간 계산</span>
+      </div>
+      <div class="flex items-center gap-4 text-slate-400">
+        <span id="lastUpdatedText" class="flex items-center gap-1">
+          <i class="fa-regular fa-clock"></i> 갱신 시각: <span class="text-slate-200 font-mono">-</span>
+        </span>
+      </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- 1. TOP LAYOUT: CURRENT PRICES CARD VIEW    -->
+    <!-- ========================================== -->
+    <section>
+      <div class="flex items-center justify-between mb-4">
+        <div class="flex items-center gap-2">
+          <div class="w-1.5 h-5 bg-amber-500 rounded-full"></div>
+          <h2 class="text-lg font-bold tracking-tight text-white flex items-center gap-2">
+            주요 금속 현재 원화 시세
+            <span class="text-xs font-normal text-slate-400">(실시간 단일 카드뷰)</span>
+          </h2>
+        </div>
+        <div class="text-xs text-slate-400 flex items-center gap-1.5">
+          <i class="fa-solid fa-circle-info text-amber-400"></i>
+          <span>1 트로이 온스(t oz) = 31.1035g | 실시간 환율 자동 적용</span>
+        </div>
+      </div>
+
+      <!-- Metal Cards Grid: Gold, Silver, Platinum, Palladium -->
+      <div id="metalCardsContainer" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        <!-- Cards injected dynamically via app.js -->
+        <div class="animate-pulse bg-slate-900 border border-slate-800 rounded-2xl h-44"></div>
+        <div class="animate-pulse bg-slate-900 border border-slate-800 rounded-2xl h-44"></div>
+        <div class="animate-pulse bg-slate-900 border border-slate-800 rounded-2xl h-44"></div>
+        <div class="animate-pulse bg-slate-900 border border-slate-800 rounded-2xl h-44"></div>
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- 2. MIDDLE LAYOUT: PERIOD SELECTOR BAR      -->
+    <!-- ========================================== -->
+    <section class="bg-gradient-to-r from-slate-900 via-slate-900 to-slate-800/80 p-4 sm:p-5 rounded-2xl border border-slate-800 shadow-xl space-y-3">
+      <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div>
+          <div class="flex items-center gap-2">
+            <i class="fa-solid fa-chart-line text-amber-400"></i>
+            <h3 class="text-base font-bold text-white">시세 변동 그래프 기간 설정</h3>
+          </div>
+          <p class="text-xs text-slate-400 mt-0.5">조회 기간을 선택하면 하단의 금속별 실시간 원화 시세 변동 그래프가 세로로 1개씩 표시됩니다.</p>
+        </div>
+
+        <!-- Period Pill Buttons -->
+        <div class="flex items-center gap-2 p-1.5 rounded-xl bg-slate-950/80 border border-slate-800/80">
+          <button data-period="5d" class="period-btn px-4 py-2 rounded-lg text-xs font-semibold transition-all bg-amber-500 text-slate-950 shadow-md">
+            최근 5일 (실시간 API)
+          </button>
+          <button data-period="3d" class="period-btn px-4 py-2 rounded-lg text-xs font-semibold transition-all text-slate-400 hover:text-slate-100 hover:bg-slate-800/60">
+            최근 3일
+          </button>
+          <button data-period="2d" class="period-btn px-4 py-2 rounded-lg text-xs font-semibold transition-all text-slate-400 hover:text-slate-100 hover:bg-slate-800/60">
+            최근 2일 (48시간)
+          </button>
+        </div>
+      </div>
+
+      <!-- Period Notice -->
+      <div class="flex items-center gap-2 text-xs text-slate-400 bg-slate-950/40 px-3.5 py-2 rounded-lg border border-slate-800/50">
+        <i class="fa-solid fa-circle-check text-emerald-400"></i>
+        <span id="periodNoticeText">선택된 기간: <strong>최근 5일</strong> (MetalpriceAPI 실시간 일자별 원화 종가 데이터 100% 반영)</span>
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- 3. BOTTOM LAYOUT: VERTICAL INDIVIDUAL CHARTS -->
+    <!-- ========================================== -->
+    <section class="space-y-6">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <div class="w-1.5 h-5 bg-sky-500 rounded-full"></div>
+          <h2 class="text-lg font-bold tracking-tight text-white flex items-center gap-2">
+            금속별 원화 시세 변동 개별 차트
+            <span class="text-xs font-normal text-slate-400">(세로 1개씩 단독 배치)</span>
+          </h2>
+        </div>
+        <div class="flex items-center gap-2 text-xs text-slate-400">
+          <span class="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+          <span>마우스 호버 시 일자별 실시간 원화 상세 시세 확인 가능</span>
+        </div>
+      </div>
+
+      <!-- Vertical Stack of 4 Metal Charts -->
+      <div id="verticalChartsContainer" class="space-y-6">
+        
+        <!-- 1. GOLD CHART (금) -->
+        <div id="chartCard-XAU" class="metal-chart-card bg-slate-900 border border-slate-800/80 rounded-2xl p-4 sm:p-6 shadow-xl transition-all hover:border-amber-500/40">
+          <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 text-lg">
+                <i class="fa-solid fa-coins"></i>
+              </div>
+              <div>
+                <div class="flex items-center gap-2">
+                  <h3 class="text-base font-bold text-white">금 (Gold / XAU)</h3>
+                  <span class="px-2 py-0.5 rounded text-[11px] font-mono font-medium bg-amber-500/20 text-amber-300 border border-amber-500/30">실시간 원화 시세</span>
+                </div>
+                <p class="text-xs text-slate-400">국제 표준 현물 귀금속 • 최고의 안전자산</p>
+              </div>
+            </div>
+            
+            <!-- Quick Stat Badges -->
+            <div class="flex flex-wrap items-center gap-2 text-xs">
+              <div class="px-3 py-1 rounded-lg bg-slate-800/80 border border-slate-700/60">
+                <span class="text-slate-400">기간 최고가:</span>
+                <span id="stat-high-XAU" class="font-mono font-bold text-emerald-400 ml-1">-</span>
+              </div>
+              <div class="px-3 py-1 rounded-lg bg-slate-800/80 border border-slate-700/60">
+                <span class="text-slate-400">기간 최저가:</span>
+                <span id="stat-low-XAU" class="font-mono font-bold text-rose-400 ml-1">-</span>
+              </div>
+              <div class="px-3 py-1 rounded-lg bg-slate-800/80 border border-slate-700/60">
+                <span class="text-slate-400">기간 변동률:</span>
+                <span id="stat-change-XAU" class="font-mono font-bold ml-1">-</span>
+              </div>
+            </div>
+          </div>
+          
+          <div class="relative w-full h-[280px] sm:h-[320px]">
+            <canvas id="chart-XAU"></canvas>
+          </div>
+        </div>
+
+        <!-- 2. SILVER CHART (은) -->
+        <div id="chartCard-XAG" class="metal-chart-card bg-slate-900 border border-slate-800/80 rounded-2xl p-4 sm:p-6 shadow-xl transition-all hover:border-slate-400/40">
+          <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-xl bg-slate-400/10 border border-slate-400/30 flex items-center justify-center text-slate-300 text-lg">
+                <i class="fa-solid fa-ring"></i>
+              </div>
+              <div>
+                <div class="flex items-center gap-2">
+                  <h3 class="text-base font-bold text-white">은 (Silver / XAG)</h3>
+                  <span class="px-2 py-0.5 rounded text-[11px] font-mono font-medium bg-slate-700/50 text-slate-300 border border-slate-600">실시간 원화 시세</span>
+                </div>
+                <p class="text-xs text-slate-400">귀금속 및 첨단 산업용 핵심 원자재</p>
+              </div>
+            </div>
+            
+            <div class="flex flex-wrap items-center gap-2 text-xs">
+              <div class="px-3 py-1 rounded-lg bg-slate-800/80 border border-slate-700/60">
+                <span class="text-slate-400">기간 최고가:</span>
+                <span id="stat-high-XAG" class="font-mono font-bold text-emerald-400 ml-1">-</span>
+              </div>
+              <div class="px-3 py-1 rounded-lg bg-slate-800/80 border border-slate-700/60">
+                <span class="text-slate-400">기간 최저가:</span>
+                <span id="stat-low-XAG" class="font-mono font-bold text-rose-400 ml-1">-</span>
+              </div>
+              <div class="px-3 py-1 rounded-lg bg-slate-800/80 border border-slate-700/60">
+                <span class="text-slate-400">기간 변동률:</span>
+                <span id="stat-change-XAG" class="font-mono font-bold ml-1">-</span>
+              </div>
+            </div>
+          </div>
+          
+          <div class="relative w-full h-[280px] sm:h-[320px]">
+            <canvas id="chart-XAG"></canvas>
+          </div>
+        </div>
+
+        <!-- 3. PLATINUM CHART (플래티넘) -->
+        <div id="chartCard-XPT" class="metal-chart-card bg-slate-900 border border-slate-800/80 rounded-2xl p-4 sm:p-6 shadow-xl transition-all hover:border-cyan-500/40">
+          <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 text-lg">
+                <i class="fa-solid fa-crown"></i>
+              </div>
+              <div>
+                <div class="flex items-center gap-2">
+                  <h3 class="text-base font-bold text-white">플래티넘 (Platinum / XPT)</h3>
+                  <span class="px-2 py-0.5 rounded text-[11px] font-mono font-medium bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">실시간 원화 시세</span>
+                </div>
+                <p class="text-xs text-slate-400">백금 • 친환경 수소 촉매 및 고가 주얼리</p>
+              </div>
+            </div>
+            
+            <div class="flex flex-wrap items-center gap-2 text-xs">
+              <div class="px-3 py-1 rounded-lg bg-slate-800/80 border border-slate-700/60">
+                <span class="text-slate-400">기간 최고가:</span>
+                <span id="stat-high-XPT" class="font-mono font-bold text-emerald-400 ml-1">-</span>
+              </div>
+              <div class="px-3 py-1 rounded-lg bg-slate-800/80 border border-slate-700/60">
+                <span class="text-slate-400">기간 최저가:</span>
+                <span id="stat-low-XPT" class="font-mono font-bold text-rose-400 ml-1">-</span>
+              </div>
+              <div class="px-3 py-1 rounded-lg bg-slate-800/80 border border-slate-700/60">
+                <span class="text-slate-400">기간 변동률:</span>
+                <span id="stat-change-XPT" class="font-mono font-bold ml-1">-</span>
+              </div>
+            </div>
+          </div>
+          
+          <div class="relative w-full h-[280px] sm:h-[320px]">
+            <canvas id="chart-XPT"></canvas>
+          </div>
+        </div>
+
+        <!-- 4. PALLADIUM CHART (팔라듐) -->
+        <div id="chartCard-XPD" class="metal-chart-card bg-slate-900 border border-slate-800/80 rounded-2xl p-4 sm:p-6 shadow-xl transition-all hover:border-purple-500/40">
+          <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/30 flex items-center justify-center text-purple-400 text-lg">
+                <i class="fa-solid fa-atom"></i>
+              </div>
+              <div>
+                <div class="flex items-center gap-2">
+                  <h3 class="text-base font-bold text-white">팔라듐 (Palladium / XPD)</h3>
+                  <span class="px-2 py-0.5 rounded text-[11px] font-mono font-medium bg-purple-500/20 text-purple-300 border border-purple-500/30">실시간 원화 시세</span>
+                </div>
+                <p class="text-xs text-slate-400">자동차 매연 저감 촉매 및 첨단 전자 부품 핵심 소재</p>
+              </div>
+            </div>
+            
+            <div class="flex flex-wrap items-center gap-2 text-xs">
+              <div class="px-3 py-1 rounded-lg bg-slate-800/80 border border-slate-700/60">
+                <span class="text-slate-400">기간 최고가:</span>
+                <span id="stat-high-XPD" class="font-mono font-bold text-emerald-400 ml-1">-</span>
+              </div>
+              <div class="px-3 py-1 rounded-lg bg-slate-800/80 border border-slate-700/60">
+                <span class="text-slate-400">기간 최저가:</span>
+                <span id="stat-low-XPD" class="font-mono font-bold text-rose-400 ml-1">-</span>
+              </div>
+              <div class="px-3 py-1 rounded-lg bg-slate-800/80 border border-slate-700/60">
+                <span class="text-slate-400">기간 변동률:</span>
+                <span id="stat-change-XPD" class="font-mono font-bold ml-1">-</span>
+              </div>
+            </div>
+          </div>
+          
+          <div class="relative w-full h-[280px] sm:h-[320px]">
+            <canvas id="chart-XPD"></canvas>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="border-t border-slate-800/80 bg-slate-950/60 py-6 px-4 sm:px-8 text-xs text-slate-500 text-center space-y-2">
+    <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
+      <div class="flex items-center gap-2">
+        <span class="font-bold text-slate-400">MetalPulse</span>
+        <span>•</span>
+        <span>MetalpriceAPI 실시간 OpenAPI 데이터 기반</span>
+      </div>
+      <div>
+        <span>1 Troy Ounce = 31.1034768g | 실시간 USD/KRW 시장 환율이 자동 반영됩니다.</span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Toast Notification Container -->
+  <div id="toastContainer" class="fixed bottom-5 right-5 z-50 space-y-2 pointer-events-none"></div>
+
+  <!-- App Script -->
+  <script src="app.js"></script>
+</body>
+</html>
