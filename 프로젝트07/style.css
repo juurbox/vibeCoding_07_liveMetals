@@ -1,0 +1,89 @@
+/* Custom Glassmorphism & Metallic Styling for MetalPulse */
+
+@keyframes pulseGlow {
+  0%, 100% {
+    box-shadow: 0 0 15px -3px rgba(245, 158, 11, 0.2), 0 0 6px -2px rgba(245, 158, 11, 0.1);
+  }
+  50% {
+    box-shadow: 0 0 25px 2px rgba(245, 158, 11, 0.4), 0 0 10px 0px rgba(245, 158, 11, 0.2);
+  }
+}
+
+.glow-card-gold {
+  transition: all 0.25s ease-in-out;
+}
+.glow-card-gold:hover {
+  border-color: rgba(245, 158, 11, 0.5);
+  box-shadow: 0 10px 25px -5px rgba(245, 158, 11, 0.15);
+  transform: translateY(-2px);
+}
+
+.glow-card-silver:hover {
+  border-color: rgba(148, 163, 184, 0.5);
+  box-shadow: 0 10px 25px -5px rgba(148, 163, 184, 0.15);
+  transform: translateY(-2px);
+}
+
+.glow-card-copper:hover {
+  border-color: rgba(234, 88, 12, 0.5);
+  box-shadow: 0 10px 25px -5px rgba(234, 88, 12, 0.15);
+  transform: translateY(-2px);
+}
+
+.glow-card-platinum:hover {
+  border-color: rgba(6, 182, 212, 0.5);
+  box-shadow: 0 10px 25px -5px rgba(6, 182, 212, 0.15);
+  transform: translateY(-2px);
+}
+
+.glow-card-palladium:hover {
+  border-color: rgba(139, 92, 246, 0.5);
+  box-shadow: 0 10px 25px -5px rgba(139, 92, 246, 0.15);
+  transform: translateY(-2px);
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #090d16;
+}
+::-webkit-scrollbar-thumb {
+  background: #1f2937;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #374151;
+}
+
+/* Toast animation */
+.toast-enter {
+  animation: slideInRight 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+.toast-exit {
+  animation: slideOutRight 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideOutRight {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+}
